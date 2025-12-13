@@ -5,10 +5,10 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="js">
 import { ref, onMounted, watch, onUnmounted } from 'vue';
 import * as echarts from 'echarts';
-import { processBarChartData } from '@/utils/attendanceProcessor..js';
+import { processBarChartData } from '@/utils/attendanceProcessor.js';
 
 const departmentNames = {
   'Finance': '财务部',
@@ -27,10 +27,21 @@ const props = defineProps({
 const chartRef = ref(null);
 let myChart = null;
 
+/**
+ * 格式化数字，确保始终是两位 (例如 8 -> '08')
+ * @param {number} num
+ * @returns {string}
+ */
+const formatTimePart = (num) => String(num).padStart(2, '0');
+
 const renderChart = (dept) => {
   if (!chartRef.value) return;
 
-  const { checkin, checkout, xLabels } = processBarChartData(dept);
+  const {
+    checkinProportion: checkin,
+    checkoutProportion: checkout,
+    xLabels
+  } = processBarChartData(dept);
 
   if (myChart) {
     myChart.dispose();
@@ -48,10 +59,31 @@ const renderChart = (dept) => {
     },
     tooltip: {
       trigger: 'axis',
+      // Tooltip 格式：显示 15 分钟时间区间
       formatter: function (params) {
-        let tooltip = `${params[0].name}<br/>`;
+        const dataIndex = params[0].dataIndex; // 0 到 95 (24小时 * 4个刻度)
+
+        // 1. 计算起始时间 (Start Time)
+        const startTotalMinutes = dataIndex * 15;
+        const startHour = Math.floor(startTotalMinutes / 60);
+        const startMinute = startTotalMinutes % 60;
+        const startTime = `${formatTimePart(startHour)}:${formatTimePart(startMinute)}`;
+
+        // 2. 计算结束时间 (End Time)
+        const endTotalMinutes = startTotalMinutes + 15;
+        const endHour = Math.floor(endTotalMinutes / 60);
+        const endMinute = endTotalMinutes % 60;
+        const endTime = `${formatTimePart(endHour % 24)}:${formatTimePart(endMinute)}`;
+
+        // 组装 Tooltip 头部：精确的时间区间，并移除星号
+        let tooltip = `时间区间：${startTime} - ${endTime}<br/>`;
+
+        // 组装数据详情，移除星号
         params.forEach(item => {
-          tooltip += `${item.marker} ${item.seriesName}: **${item.value} 次**<br/>`;
+          const proportion = item.value;
+          const percentage = (proportion * 100).toFixed(2) + '%';
+
+          tooltip += `${item.marker} ${item.seriesName}: ${percentage}<br/>`;
         });
         return tooltip;
       },
@@ -72,16 +104,23 @@ const renderChart = (dept) => {
     xAxis: {
       type: 'category',
       data: xLabels,
-      name: '时间 (15分钟/刻度)',
+      name: '时间 (每 15 分钟一格)',
       axisLabel: {
-        // 仅显示每小时的标签 (00:00, 01:00, ...)
-        interval: 3,
-        rotate: 45
+        // 每两小时显示一个刻度
+        interval: 7,
+        // 直立显示
+        rotate: 0
       }
     },
     yAxis: {
       type: 'value',
-      name: '频率 (打卡次数)'
+      name: '频率 (占比)',
+      axisLabel: {
+        // 格式化为百分比
+        formatter: function (value) {
+          return (value * 100).toFixed(1) + '%';
+        }
+      }
     },
     series: [
       {

@@ -1,92 +1,167 @@
 <template>
   <div class="chart-container">
     <h2>全员工考勤热力概览图 (工作时长)</h2>
-    <div ref="chartRef" class="heatmap-chart"></div>
+
+    <div class="filter-controls">
+      <label for="dept-select">部门筛选：</label>
+      <select id="dept-select" v-model="selectedDepartment" @change="updateChart">
+        <option
+            v-for="(range, dept) in departmentRanges"
+            :key="dept"
+            :value="dept"
+        >
+          {{ dept }}
+        </option>
+      </select>
+    </div>
+
+    <div class="heatmap-wrapper">
+      <div
+          ref="chartRef"
+          class="heatmap-chart"
+          :style="{ height: `${CHART_FIXED_HEIGHT}px` }"
+      ></div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import * as echarts from 'echarts';
-import { processHeatmapData } from '../utils/attendanceProcessor..js';
+import {
+  processHeatmapData,
+  employeeDeptNameMap
+} from '../utils/attendanceProcessor.js';
 
 const chartRef = ref(null);
 let myChart = null;
 
-const renderChart = () => {
-  if (!chartRef.value) return;
+const {
+  seriesData,
+  xAxisData,
+  yAxisData,
+  maxValue,
+  deptMarkLines,
+  deptMarkPoints,
+  departmentRanges,
+  dateRange,
+  attendanceDetailMap
+} = processHeatmapData();
+const totalEmployees = yAxisData.length;
 
-  const { seriesData, xAxisData, yAxisData, maxValue, deptMarkPoints, deptMarkLines } = processHeatmapData();
+const selectedDepartment = ref('全部');
+const CHART_FIXED_HEIGHT = 800;
+const GRID_TOP_PX = 50;
+const GRID_BOTTOM_PX = 80;
 
-  if (myChart) {
-    myChart.dispose();
+
+const updateChart = () => {
+  if (!myChart) return;
+
+  const currentDept = selectedDepartment.value;
+  const range = departmentRanges[currentDept];
+
+  let startValue = 0;
+  let endValue = totalEmployees - 1;
+
+  if (currentDept !== '全部') {
+    startValue = range.startIndex;
+    endValue = range.endIndex;
   }
-  myChart = echarts.init(chartRef.value);
-
-  const totalEmployees = yAxisData.length;
-  const dynamicHeight = Math.max(800, totalEmployees * 20);
-  chartRef.value.style.height = `${dynamicHeight}px`;
 
   const option = {
+    // Tooltip: 鼠标悬浮提示
     tooltip: {
       position: 'top',
       formatter: function (params) {
-        const hours = params.value[2];
-        const day = xAxisData[params.value[0]];
-        const employeeId = yAxisData[params.value[1]];
-        if (hours > 0) {
-          return `
-                **员工ID: ${employeeId}**<br/>
-                日期: ${day}<br/>
-                **工作时长: ${hours.toFixed(2)} 小时**
-            `;
-        } else {
-          return `员工ID: ${employeeId}<br/>日期: ${day}<br/>未打卡/缺勤`;
+        const workingHours = params.value[2]; // 工作时长 (数值)
+        const day = xAxisData[params.value[0]]; // 日期
+        const employeeId = yAxisData[params.value[1]]; // 员工 ID
+
+        // 查找部门信息
+        const department = employeeDeptNameMap.get(employeeId) || '未知';
+
+        // 查找详细考勤信息 (checkin, checkout)
+        const detailKey = `${employeeId}_${day}`;
+        const detail = attendanceDetailMap.get(detailKey);
+
+        let checkinTime = 'N/A';
+        let checkoutTime = 'N/A';
+        let formattedHours = 'N/A';
+
+        if (detail && detail.checkin) {
+          checkinTime = detail.checkin;
+          checkoutTime = detail.checkout || 'N/A';
+          formattedHours = `${workingHours.toFixed(2)} 小时`;
+        } else if (workingHours === 0) {
+          formattedHours = '缺勤/未打卡 (0.00 小时)';
         }
+
+        // 返回包含五行信息的 HTML 字符串, 移除了 **
+        return `
+            <div style="font-weight: bold; margin-bottom: 5px; color: #333;">考勤详情</div>
+            员工 ID: ${employeeId}<br/>
+            所在部门: ${department}<br/>
+            From (上班): ${checkinTime}<br/>
+            To (下班): ${checkoutTime}<br/>
+            总工作时间: <span style="font-weight: bold; color: ${workingHours > 8 ? 'red' : '#5AD8AA'};">${formattedHours}</span>
+        `;
       }
     },
-    // ⭐️ 修正 1: grid.left 保持在 12%，为 MarkPoint 留出 Y 轴标签的空间
+
+    // DataZoom 配置 (保持不变)
+    dataZoom: [
+      {
+        type: 'slider', // X 轴保留底部滚动条
+        xAxisIndex: 0,
+        bottom: '0%',
+        height: 20,
+        start: 0,
+        end: 100,
+        show: true
+      },
+      {
+        type: 'inside', // Y 轴使用区域缩放 (鼠标滚轮/拖拽)
+        yAxisIndex: 0,
+        startValue: startValue,
+        endValue: endValue,
+        zoomOnMouseWheel: true,
+        moveOnMouseMove: true,
+        moveOnMouseWheel: true
+      }
+    ],
+
+    // Grid 配置 (保持不变)
     grid: {
-      left: '12%',
+      left: '2%',
       right: '10%',
-      bottom: '15%',
-      top: '5%',
+      bottom: GRID_BOTTOM_PX,
+      top: GRID_TOP_PX,
       containLabel: true,
     },
 
-    // Y轴配置：Y轴 0 (左侧，用于 MarkPoint 定位)
+    // Y轴配置 (保持不变)
     yAxis: [
       {
         type: 'category',
         data: yAxisData,
-        // 隐藏标签，只留下轴线和网格线
-        axisLabel: { show: false },
-        axisTick: { show: false },
-        axisLine: { show: false },
-        splitArea: { show: true },
-      },
-      // Y轴 1: 辅助 Y 轴，用于在右侧显示员工编号 (最右边)
-      {
-        type: 'category',
-        data: yAxisData,
-        position: 'right', // 放在右侧
+        position: 'right',
         axisLabel: {
           show: true,
           fontSize: 8,
-          interval: Math.ceil(totalEmployees / 30),
-          formatter: function (value) {
-            return `${value}`;
-          },
+          interval: 'auto',
+          formatter: function (value) { return `${value}`; },
           inside: false,
           margin: 5
         },
         axisTick: { show: false },
         axisLine: { show: false },
-        splitLine: { show: false }
+        splitLine: { show: false },
+        splitArea: { show: true },
       }
     ],
 
-    // X轴配置 (平铺不倾斜)
+    // X轴配置 (保持不变)
     xAxis: {
       type: 'category',
       data: xAxisData,
@@ -98,7 +173,7 @@ const renderChart = () => {
       }
     },
 
-    // VisualMap (筛选条) 位置
+    // VisualMap (保持不变)
     visualMap: {
       min: 0,
       max: maxValue,
@@ -117,56 +192,36 @@ const renderChart = () => {
         type: 'heatmap',
         data: seriesData,
         progressive: 500,
-        yAxisIndex: 0, // 绑定到第一个 Y 轴
+        yAxisIndex: 0,
         itemStyle: {
           borderColor: '#fff',
           borderWidth: 0.1
         },
-        // MarkLine 隐藏标签 (解决数字显示问题)
+        markPoint: { symbol: 'none', data: [] },
         markLine: {
           silent: true,
           symbol: 'none',
-          lineStyle: {
-            color: '#2c3e50',
-            type: 'solid',
-            width: 2
-          },
-          label: {
-            show: false
-          },
+          lineStyle: { color: '#2c3e50', type: 'solid', width: 2 },
+          label: { show: false },
           data: deptMarkLines
         },
-        // ⭐️ 核心修正 2: MarkPoint 标签定位到 Y 轴标签区域
-        markPoint: {
-          symbol: 'none',
-          data: deptMarkPoints.map(point => ({
-            name: point.name,
-            coord: [0, point.coord[1]],
-            label: {
-              show: true,
-              // 修正：position: 'left' 将标签放在 MarkPoint (0, Y) 左侧
-              position: 'left',
-              formatter: `{b|${point.name}}`,
-              // 修正：distance 负值将标签拉近 Y 轴，正值推远
-              // -25 使标签紧贴 Y 轴左侧（即在 Y 轴标签区域）
-              distance: -25,
-              rich: {
-                b: {
-                  color: '#2c3e50',
-                  fontWeight: 'bold',
-                  fontSize: 16,
-                  verticalAlign: 'middle',
-                  // 移除负值 padding，因为 distance 负责定位到 Y 轴旁边
-                }
-              }
-            }
-          }))
-        }
       }
     ]
   };
 
-  myChart.setOption(option);
+  myChart.setOption(option, { replaceMerge: ['dataZoom', 'grid', 'yAxis', 'tooltip'] });
+};
+
+
+const renderChart = () => {
+  if (!chartRef.value) return;
+
+  if (myChart) {
+    myChart.dispose();
+  }
+  myChart = echarts.init(chartRef.value);
+
+  updateChart();
   window.addEventListener('resize', resizeChart);
 };
 
@@ -192,9 +247,26 @@ onUnmounted(() => {
   overflow-x: auto;
   margin-bottom: 40px;
 }
+
+/* 筛选控制区域居中显示 */
+.filter-controls {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-left: 0;
+}
+.filter-controls label, .filter-controls select {
+  font-size: 14px;
+  margin-right: 15px;
+}
+
+.heatmap-wrapper {
+  position: relative;
+  width: 100%;
+  min-width: 800px;
+}
+
 .heatmap-chart {
   width: 100%;
-  min-height: 800px;
   min-width: 800px;
 }
 h2 {
