@@ -10,6 +10,7 @@
       <p>正在处理日志数据，请稍候... (数据聚合需要时间)</p>
     </div>
 
+
     <div ref="chartRef" class="parallel-chart" :style="{ opacity: isLoading ? 0.3 : 1 }"></div>
 
     <div v-if="!isLoading && chartData" class="selection-info">

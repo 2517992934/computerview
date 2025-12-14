@@ -9,6 +9,7 @@ import AttendanceView from '@/views/AttendanceView.vue';
 // ⭐️ 新增：日志分析模块的主视图
 import LogAnalysisView from '@/views/LogAnalysisView.vue';
 
+
 // 导入图表组件
 import AttendanceBarChart from '@/components/AttendanceBarChart.vue';
 import AttendanceHeatmap from '@/components/AttendanceHeatmap.vue';

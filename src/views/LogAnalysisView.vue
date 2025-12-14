@@ -9,6 +9,7 @@
       </router-link>
     </nav>
 
+
     <div class="chart-content">
       <router-view></router-view>
     </div>
