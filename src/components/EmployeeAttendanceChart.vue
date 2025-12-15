@@ -19,6 +19,7 @@ const props = defineProps({
   }
 });
 
+
 const chartDom = ref(null);
 let myChart = null;
 

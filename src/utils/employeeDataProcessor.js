@@ -16,6 +16,7 @@ profileData.forEach(p => {
     employeeIdToDeptMap.set(Number(p.employee_id), p.department);
 });
 
+
 // 辅助函数：将 HH:mm:ss 格式的时间转换为从午夜开始的秒数
 function timeToSeconds(timeString) {
     if (!timeString) return NaN;

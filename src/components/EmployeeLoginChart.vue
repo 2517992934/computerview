@@ -125,6 +125,7 @@ h4 {
   color: #dc3545; /* 醒目的红色表示错误 */
 }
 
+
 .no-data {
   text-align: center;
   padding: 20px;

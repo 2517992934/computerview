@@ -332,6 +332,7 @@ h2 {
   background-color: #dee2e6;
 }
 
+
 /* ⭐️ 图表区域布局 (保持单列，确保每个图表占满宽度) */
 .charts-section {
   display: grid;

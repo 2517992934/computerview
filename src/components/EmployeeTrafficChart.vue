@@ -158,6 +158,7 @@ const getOption = (data) => {
   };
 };
 
+
 const renderChart = (data) => {
   if (myChart) {
     myChart.dispose();

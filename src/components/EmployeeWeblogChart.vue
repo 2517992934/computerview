@@ -12,6 +12,7 @@
           <th class="table-header count-col">Count</th>
         </tr>
         </thead>
+
         <tbody>
         <tr v-if="!weblogData || weblogData.length === 0">
           <td colspan="2" class="no-data">无访问记录</td>
