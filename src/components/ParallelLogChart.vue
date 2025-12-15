@@ -4,7 +4,7 @@
   <div class="chart-container">
     <h2>登录日志及上下行流量数据平行坐标图</h2>
     <p class="chart-description">
-      本图已对大规模日志数据进行聚合降维处理。请使用图表上方的 **区域选择 (Brush)** 工具，在各轴上拖动鼠标进行刷取操作，交互查看筛选结果的原始日志详情。
+      本图已对大规模日志数据进行 **二级聚合降维** 处理。请使用图表上方的 **区域选择 (Brush)** 工具，在各轴上拖动鼠标进行刷取操作，交互查看筛选结果的原始日志详情。
     </p>
 
     <div v-if="isLoading" class="loading-overlay">
@@ -41,6 +41,7 @@
 <script setup lang="js">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import * as echarts from 'echarts';
+// 确保路径正确
 import { processParallelChartData } from '@/utils/logDataProcessor.js';
 
 const chartRef = ref(null);
@@ -117,10 +118,12 @@ const updateSelectionInfo = (selectedIndices) => {
   rawSelectedLogs.value = collectedRawLogs.slice(0, 5);
 };
 
-// 确保 resizeChart 在 setup 作用域中，解决上一步的 ReferenceError
+
+// ⭐️ 修正点 1: 将 resizeChart 函数定义提升到顶层作用域，确保 onUnmounted 能够正确引用。
 const resizeChart = () => {
   myChart && myChart.resize();
 };
+
 
 const renderChart = () => {
   if (!chartRef.value || !chartData) return;
@@ -202,9 +205,8 @@ const renderChart = () => {
       }
     })),
     parallel: {
-      // ⭐️ 修正: 调整左右边距，使图表更居中且避免溢出
-      left: '8%',
-      right: '8%',
+      left: '5%',
+      right: '18%',
       bottom: '10%',
       top: '20%',
       layout: 'horizontal',
@@ -225,6 +227,7 @@ const renderChart = () => {
         type: 'parallel',
         smooth: true,
         data: chartData.seriesData,
+        // 激进修正：提高线条宽度和透明度，并移除 large: true 确保稀疏数据渲染
         lineStyle: {
           width: 2,
           opacity: 1.0
@@ -232,12 +235,14 @@ const renderChart = () => {
         inactiveOpacity: 0.05,
         activeOpacity: 1,
         color: ['#5AD8A6', '#F7B74E', '#5B8FF9'],
+        // large: true // 移除此行，强制渲染稀疏线条
       }
     ]
   };
 
   myChart.setOption(option);
 
+  // 修正后的 brushSelected 监听器逻辑
   myChart.on('brushSelected', function (params) {
     let selectedIndices = [];
 
@@ -252,7 +257,11 @@ const renderChart = () => {
     updateSelectionInfo(selectedIndices);
   });
 
-  window.addEventListener('resize', resizeChart);
+  // ⭐️ 修正点 2: 移除 renderChart 中重复添加监听器的代码。
+  // const resizeChart = () => {
+  //   myChart && myChart.resize();
+  // };
+  // window.addEventListener('resize', resizeChart);
 };
 
 
@@ -263,6 +272,9 @@ onMounted(async () => {
     await nextTick();
     renderChart();
     updateSelectionInfo([]);
+
+    // ⭐️ 修正点 3: 在 onMounted (组件挂载时) 只添加一次监听器。
+    window.addEventListener('resize', resizeChart);
   } catch (error) {
     console.error("处理平行坐标图数据失败:", error);
     isLoading.value = false;
@@ -270,6 +282,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  // ⭐️ 修正点 4: 在 onUnmounted (组件卸载时) 移除监听器。
   window.removeEventListener('resize', resizeChart);
   if (myChart) {
     myChart.dispose();

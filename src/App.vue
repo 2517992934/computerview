@@ -13,7 +13,9 @@
         <router-link to="/anomaly-analysis" class="nav-button">
           员工异常情况分析
         </router-link>
-
+        <router-link to="/employee-profile" class="nav-button">
+          员工个人信息查询
+        </router-link>
         <router-link to="/log-analysis" class="nav-button">
           网络日志分析
         </router-link>

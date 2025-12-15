@@ -7,14 +7,18 @@ import GraphView from '@/views/GraphView.vue';
 import AttendanceView from '@/views/AttendanceView.vue';
 import LogAnalysisView from '@/views/LogAnalysisView.vue';
 import AnomalyAnalysisView from '@/views/AnomalyAnalysisView.vue'; // ⭐️ 新增：异常分析模块的主视图
-
-
+import EmployeeProfileView from '@/views/EmployeeProfileView.vue'; // ⭐️ 新增: 员工个人信息视图
+import EmployeeTrafficChart from '@/components/EmployeeTrafficChart.vue'; // ⭐️ 新增: 员工流量图表组件
 // 导入图表组件
 import AttendanceBarChart from '@/components/AttendanceBarChart.vue';
 import AttendanceHeatmap from '@/components/AttendanceHeatmap.vue';
 import AttendanceAnomalyChart from '@/components/AttendanceAnomalyChart.vue'; // 考勤异常图表组件
 import ParallelLogChart from '@/components/ParallelLogChart.vue';
+import EmployeeAttendanceChart from '@/components/EmployeeAttendanceChart.vue'; // ⭐️ 新增: 员工考勤图表组件
 
+import EmployeeWeblogChart from '@/components/EmployeeWeblogChart.vue'; // ⭐️ 新增: 员工网站访问次数图表组件
+// ⭐️ 新增：导入越权操作日志图表组件
+import EmployeeLoginChart from '@/components/EmployeeLoginChart.vue';
 const routes = [
     {
         path: '/',
@@ -70,6 +74,45 @@ const routes = [
             {
                 path: '',
                 redirect: { name: 'AttendanceAnomaly' }
+            }
+        ]
+    },
+    // ⭐️ 新增：员工个人信息分析模块
+    {
+        path: '/employee-profile',
+        name: 'EmployeeProfile',
+        component: EmployeeProfileView, // 主视图
+        meta: { title: '员工个人信息分析' },
+        children: [
+            {
+                path: 'attendance-chart', // 路径: /employee-profile/attendance-chart
+                name: 'EmployeeAttendanceChart',
+                component: EmployeeAttendanceChart, // 图表组件
+                meta: { title: '员工每日考勤图' }
+            },
+            {
+                path: 'traffic-chart', // ⭐️ 新增：流量图
+                name: 'EmployeeTrafficChart',
+                component: EmployeeTrafficChart,
+                meta: { title: '员工上下行流量图' }
+            },
+            {
+                path: 'weblog-chart', // ⭐️ 新增：网站访问次数图
+                name: 'EmployeeWeblogChart',
+                component: EmployeeWeblogChart,
+                meta: { title: '员工网站访问次数图' }
+            },
+            // ⭐️ 新增：越权操作日志图表路由
+            {
+                path: 'login-chart',
+                name: 'EmployeeLoginChart',
+                component: EmployeeLoginChart,
+                meta: { title: '员工越权操作日志图' }
+            },
+            // 默认子路由
+            {
+                path: '',
+                redirect: { name: 'EmployeeAttendanceChart' }
             }
         ]
     },
