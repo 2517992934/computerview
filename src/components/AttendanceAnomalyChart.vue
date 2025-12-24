@@ -59,6 +59,7 @@
 import { ref, reactive, onMounted, watch, nextTick, onUnmounted } from 'vue';
 import * as echarts from 'echarts';
 // ⚠️ 确保您已安装 echarts-liquidfill 扩展并正确导入 (npm install echarts-liquidfill --legacy-peer-deps)
+// ⚠️ 确保您已安装 echarts-liquidfill 扩展并正确导入 (npm install echarts-liquidfill --legacy-peer-deps)
 import 'echarts-liquidfill';
 // 导入修正后的数据处理函数
 import { processAttendanceData } from '@/utils/attendanceAnomalyProcessor.js';
